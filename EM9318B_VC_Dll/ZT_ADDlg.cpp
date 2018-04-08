@@ -151,6 +151,7 @@ void CZT_ADDlg::ProcessData( V_I8& codeBuffer, I32 bcGroup )
 
 void CZT_ADDlg::ReadThread()
 {
+	//计算出每次需要读取的数据量
 	I32 bcGroup = 0; 
 	I32 ret = EM9118_GetFifoGroupByteCount( _pF->_hDev, &bcGroup );
 	if( ret < 0 )
@@ -160,6 +161,7 @@ void CZT_ADDlg::ReadThread()
 	}
 	I32 bcNeed = bcGroup * _groupCntNeed;
 	
+	//根据数据量建立缓冲区
 	V_I8 codeBuffer(bcNeed);
 	I32 isError = 0;
 
@@ -169,6 +171,7 @@ void CZT_ADDlg::ReadThread()
 	{
 		I32 realBC = 0;
 		CTimeInterval tv;
+		//读取数据
 		I32 ret = EM9118_HcReadData( _pF->_hDev, bcNeed, &codeBuffer[0], &realBC );
 		if( ret < 0 )
 		{
@@ -190,12 +193,13 @@ void CZT_ADDlg::ReadThread()
 		}
 		ShowSpeed( tv.GetIntervalS(), realBC, bcGroup );
 
+		//如果选中了存盘，则执行存储操作
 		if( _isSave )
 			EM9118_DFWrite( _pF->_hDev, &codeBuffer[0], realBC );
 
 
 		if( _isProcess )
-		{
+		{//处理数据
 			_lockValue.Lock();
 			ProcessData( codeBuffer, bcGroup );
 			_lockValue.Unlock();
@@ -238,6 +242,7 @@ void CZT_ADDlg::OnBnClickedStartdaq()
 	_pF->_dlgEc.UpdateData( TRUE );
 
 	//初始化AD采集
+	//设置AD采集频率
 	F64 freq = GetDaqFreq();
 	EM9118_HcSetGroupFreq( _pF->_hDev, freq );
 
@@ -249,8 +254,9 @@ void CZT_ADDlg::OnBnClickedStartdaq()
 	EM9118_CtChIsInFifo( _pF->_hDev, (I32*)_pF->_dlgCt._isCtInFifo );
 	//设置需要开关量高速采集的通道
 	EM9118_DiIsInFifo( _pF->_hDev, _pF->_dlgIo._isIoInFifo );
-
+	//上面四个函数调用完毕后，可以调用下面的函数获得每组数据的字节数
 	EM9118_GetFifoGroupByteCount( _pF->_hDev, &_groupBC );
+
 	//设置AD采集范围
 	EM9118_AdSetRange( _pF->_hDev, _adRange );
 
@@ -263,6 +269,7 @@ void CZT_ADDlg::OnBnClickedStartdaq()
 	_groupCntNeed = I32(GetDaqFreq() / 1000.0 * _pF->_readInterval);
 	ASSERT( _groupCntNeed > 0 );
 
+	//如果选中了处理数据复选框，则需要对处理数据相关的变量初始化
 	if( _isProcess )
 	{
 		if( _adAverageNumber > 0 )
@@ -294,11 +301,13 @@ void CZT_ADDlg::OnBnClickedStartdaq()
 			_ioValue.resize( _processGroupCnt );
 	}
 	
+	//如果选择存盘，则需要建立文件
 	if( _isSave )
 	{
 		OpenWriteFile();
 	}
 
+	//启动硬件采集
 	EM9118_HcStart( _pF->_hDev, _clkSrc, _triSrc, _edgeLevel, _upDown );
 
 	_isDaqStart = 1;
@@ -340,6 +349,7 @@ void CZT_ADDlg::OnBnClickedStopdaq()
 	_isDaqStart = 0;
 	MyWaitForSingleObject( _readThreadExit, 2000 );
 
+	//停止硬件控制采集
 	StopAD();
 	if( _isSave )
 		EM9118_DFWClose( _pF->_hDev );

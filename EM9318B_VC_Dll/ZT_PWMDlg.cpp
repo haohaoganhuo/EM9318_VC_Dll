@@ -120,6 +120,7 @@ void CZT_PWMDlg::OnBnClickedPwmstop()
 
 void CZT_PWMDlg::OnTimer(UINT_PTR nIDEvent)
 {
+	//当PWM输出个数不为零时，需要判读PWM输出是否完成
 	I8 isOver[EM9318_MAXPWMCHCNT];
 	I32 ret = EM9318_PwmIsOver( _pF->_hDev, isOver );
 	if( ret < 0 )

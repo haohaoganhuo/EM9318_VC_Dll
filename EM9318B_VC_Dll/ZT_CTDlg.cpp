@@ -64,9 +64,11 @@ void CZT_CTDlg::OnBnClickedSetcnt()
 	{
 		ctMode[i] = _cntMode;
 	}
+	//设置计数器工作方式（计数还是测频）
 	I32 ret = EM9118_CtSetModeAll( _pF->_hDev, ctMode );
 	for( i = 0; i < EM9118_MAXCTCHCNT; ++i )
 	{
+		//测频方式下需要设置基准时钟
 		I32 ret = EM9118_CtSetFreqBase( _pF->_hDev, i + 1, _ctBaseMS[i], 0 );
 		if( ret < 0 )
 		{
