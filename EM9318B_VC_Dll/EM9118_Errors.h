@@ -16,6 +16,8 @@
 #define EM9118_SOCKET_ERROR                     -101 //打开网络套接字错误
 #define EM9118_FILEPATH_ERROR                   -201 //文件目录错误
 #define EM9118_FILEWRITE_ERROR                  -202 //写文件错误
-#define EM9118_FILEREAD_ERROR                   -202 //写文件错误
+#define EM9118_FILEREAD_ERROR                   -203 //读文件错误
+#define EM9118_FILESEEK_ERROR                   -204 //文件定位错误
+#define EM9118_FILECLOSE_ERROR                  -205 //读文件错误
 
 #endif

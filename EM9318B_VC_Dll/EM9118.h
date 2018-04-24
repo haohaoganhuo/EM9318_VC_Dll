@@ -131,6 +131,26 @@ I32 _stdcall EM9118_AdChGetCode( I32 hDevice, I32 chInx, U32 bytesCount, I8* cod
 //            adCode：AD原码值，需要用户分配空间
 //返回值：0表示成功，<0表示失败
 
+I32 _stdcall EM9118_AdChSetZeroFullValue( I32 hDevice, I32 chNo, F64 zeroValue, F64 fullValue );
+//函数功能：设置AD零点值和满度值，这个函数可以将原码转换成工程值
+//          必须在EM9118_AdSetRange函数后调用，这样EM9118_AdChCodeToValue函数就可以将原码值转换成对应的工程值
+//入口参数：
+//           hDevice：设备句柄，EM9118_DeviceCreate函数返回值
+//              chNo：通道号，1~18
+//         zeroValue：零点值，也就是0V对应的工程值
+//         fullValue：满度值，对应采集范围最大值的0.9倍，比如±10V采集范围，满度值是9V对应的工程值
+//返回值：0表示成功，<0表示失败
+
+I32 _stdcall EM9118_AdReadAllCodeOnce( I32 hDevice, I16 adCode[EM9118_MAXADCHCNT], I32 timeOutMS = EM9118_TIMOUT_MS );
+//函数功能：读取一次18个通道的AD数据。
+//入口参数：
+//           hDevice：设备句柄，EM9118_DeviceCreate函数返回值
+//出口参数：
+//            adCode：18元素有符号16位整型数组，返回18个通道的AD原码，如果实际AD通道数不足18，则只有通道数范围内的数组元素有意义。
+//                    注意：此参数必须为18元素数组。
+//返回值：0表示成功，<0表示失败
+
+
 I32 _stdcall EM9118_AdChCodeToValue( I32 hDevice, I32 chNo, I16 iCode, F64* adValue );
 //函数功能：将AD原码值转换成物理值
 //入口参数：
@@ -161,7 +181,7 @@ I32 _stdcall EM9118_HcSetGroupFreq( I32 hDevice,  F64 groupFreq, I32 timeOutMS =
 //                无
 //返回值：0表示成功，<0表示失败
 
-I32 _stdcall EM9118_HcSetTriCount( HANDLE hDevice, U32 triCount, I32 timeOutMS = EM9118_TIMOUT_MS );
+I32 _stdcall EM9118_HcSetTriCount( I32 hDevice, U32 triCount, I32 timeOutMS = EM9118_TIMOUT_MS );
 //函数功能：设置外触发组数，此函数只有外触发且边沿触发时才有效
 //入口参数：
 //           hDevice：设备句柄，EM9118_DeviceCreate函数返回值
@@ -203,7 +223,7 @@ I32 _stdcall EM9118_CtChGetCode( I32 hDevice, I32 chInx, U32 bytesCount, I8* cod
 //函数功能：将从缓冲区中获得指定通道的计数器原码值，缓冲区数据调用EM9118_HcReadData得到
 //入口参数：
 //         hDevice：设备句柄，EM9118_DeviceCreate函数返回值
-//           chInx：通道索引，0~实际使能通道数-1，这里的通道索引是值离线文件使能通道的序号，比如使能了CT2和CT3两个通道，则chInx=0时表示要取得CT2的值，chInx=1时表示要取得CT3的值
+//           chInx：通道索引，0~实际使能通道数-1，这里的通道索引是指使能通道的序号，比如使能了CT2和CT3两个通道，则chInx=0时表示要取得CT2的值，chInx=1时表示要取得CT3的值
 //      codeBuffer：数据缓冲区，和EM9118_HcReadData应该是相同的
 //出口参数：
 //          ctCode：计数器原码值，需要用户分配空间
@@ -224,7 +244,7 @@ I32 _stdcall EM9118_EcChGetCode( I32 hDevice, I32 chInx, U32 bytesCount, I8* cod
 //函数功能：将从缓冲区中获得指定通道的编码器原码值，缓冲区数据调用EM9118_HcReadData得到
 //入口参数：
 //           hDevice：设备句柄，EM9118_DeviceCreate函数返回值
-//           chInx：通道索引，0~实际使能通道数-1，这里的通道索引是值离线文件使能通道的序号
+//           chInx：通道索引，0~实际使能通道数-1，这里的通道索引是指使能通道的序号
 //        codeBuffer：数据缓冲区，和EM9118_HcReadData应该是相同的
 //出口参数：
 //            ecCode：编码器原码值，需要用户分配空间
@@ -376,7 +396,7 @@ I32 _stdcall EM9118_PwmSetCount( I32 hDevice, I32 chNo, U32 setCount, I32 timeOu
 //入口参数：
 //                hDevice：设备句柄，EM9118_DeviceCreate函数返回值
 //                   chNo：通道号，1~2
-//               setCount：脉冲个数，如果设为，则表示连续输出
+//               setCount：脉冲个数，如果设为0，则表示连续输出
 //返回值：0表示成功，<0表示失败
 
 I32 _stdcall EM9118_CSVOpen( I32 hDevice, char* dirPath, I32 pathLen );
@@ -845,7 +865,7 @@ I32 _stdcall EM9318_PwmSetPulse( I32 hDevice, I32 chNo, double freq, double duty
 //入口参数：
 //                hDevice：设备句柄，EM9118_DeviceCreate函数返回值
 //                   chNo：通道号，1~4
-//                   freq：输出频率。1Hz~500KHz，在某些频率下会有误差。
+//                   freq：输出频率。1Hz~1MHz，在某些频率下会有误差。
 //              dutyCycle：占空比。0~1，具体调节档位取决于输出频率，输出频率越低，可调节的档位越多。
 //出口参数：
 //               realFreq：真实频率值，由于数字量化误差，设定频率和真实频率之间会有些误差

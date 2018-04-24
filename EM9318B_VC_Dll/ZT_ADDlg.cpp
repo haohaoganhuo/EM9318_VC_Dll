@@ -24,6 +24,7 @@ CZT_ADDlg::CZT_ADDlg(CWnd* pParent /*=NULL*/)
 	, _isProcess(TRUE)
 	, _adAverageNumber(1000)
 	, _readTimes(0)
+	, _triCount(0)
 {
 	_ctrlDaqFreq = "200KHz";
 
@@ -57,6 +58,7 @@ void CZT_ADDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_ISPROCESS, _isProcess);
 	DDX_Text(pDX, IDC_AVERAGENUM, _adAverageNumber);
 	DDV_MinMaxInt(pDX, _adAverageNumber, 0, 10000);
+	DDX_Text(pDX, IDC_TRICOUNT, _triCount);
 }
 
 
@@ -64,6 +66,7 @@ BEGIN_MESSAGE_MAP(CZT_ADDlg, CDialog)
 	ON_BN_CLICKED(IDSTARTDAQ, &CZT_ADDlg::OnBnClickedStartdaq)
 	ON_BN_CLICKED(IDSTOPDAQ, &CZT_ADDlg::OnBnClickedStopdaq)
 	ON_WM_TIMER()
+	ON_BN_CLICKED(IDREADADONCE, &CZT_ADDlg::OnBnClickedReadadonce)
 END_MESSAGE_MAP()
 
 F64 CZT_ADDlg::GetDaqFreq()
@@ -106,6 +109,13 @@ void CZT_ADDlg::ShowSpeed( F64 tvS, I32 onceBC, I32 bcGroup )
 	F64 rtSpeedGC = onceBC / bcGroup / tvS;
 	str.Format( "%8.0f", rtSpeedGC );
 	GetDlgItem( IDC_SPEEDRTGC )->SetWindowText( str );
+
+	if( _triSrc == EM9118_CLKSRC_EX && _edgeLevel == EM9118_TRI_EDGE && _allReadBC / bcGroup >= _triCount )
+	{
+		_pF->ShowInfo( "已经获取指定采集组数，实际组数：%f\n", _allReadBC / bcGroup );
+		_pF->ShowInfo( "正在等待外触发信号\n" );
+		_allReadBC = 0;
+	}
 }
 
 void CZT_ADDlg::ProcessData( V_I8& codeBuffer, I32 bcGroup )
@@ -182,7 +192,7 @@ void CZT_ADDlg::ReadThread()
 //					_pF->ShowInfo( "超时:%d,%d\n", ret, realBC );
 				}else
 				{
-					_allReadBC = 0;
+//					_allReadBC = 0;
 					continue;
 				}
 			}else
@@ -307,8 +317,14 @@ void CZT_ADDlg::OnBnClickedStartdaq()
 		OpenWriteFile();
 	}
 
+	//设置边沿外触发时外触发个数
+	EM9118_HcSetTriCount( _pF->_hDev, _triCount );
+
 	//启动硬件采集
 	EM9118_HcStart( _pF->_hDev, _clkSrc, _triSrc, _edgeLevel, _upDown );
+
+	if( _triSrc == EM9118_CLKSRC_EX )
+		_pF->ShowInfo( "正在等待外触发信号\n" );
 
 	_isDaqStart = 1;
 	_readTimes = 0;
@@ -428,4 +444,41 @@ void CZT_ADDlg::OnTimer(UINT_PTR nIDEvent)
 	_lockValue.Unlock();
 
 	CDialog::OnTimer(nIDEvent);
+}
+
+void CZT_ADDlg::OnBnClickedReadadonce()
+{
+	UpdateData( TRUE );
+	I32 ret = EM9118_AdSetRange( _pF->_hDev, _adRange );
+	if( ret < 0 )
+	{
+		_pF->ShowInfo( "EM9118_AdSetRange error:%d", ret );
+		return;
+	}
+
+	V_I16 adCode(EM9118_MAXADCHCNT);
+	ret = EM9118_AdReadAllCodeOnce( _pF->_hDev, &adCode[0] );
+	if( ret < 0 )
+	{
+		_pF->ShowInfo( "EM9118_AdReadAllCodeOnce error:%d", ret );
+		return;
+	}
+
+	for( U32 i = 0; i < EM9118_MAXADCHCNT; ++i )
+	{
+		F64 adValue;
+		CString str;
+		if( _dispMode )
+		{
+			EM9118_AdChCodeToValue( _pF->_hDev, i + 1, adCode[i], &adValue );
+			str.Format( "%5.3f", adValue );
+		}
+		else
+		{
+			adValue = adCode[i];
+			str.Format( "%5.0f", adValue );
+		}
+
+		SetDlgItemText( IDC_ADDATA1 + i, str );
+	}
 }
